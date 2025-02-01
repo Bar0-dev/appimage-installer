@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# Check if the correct number of arguments are provided
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <appimage_path> <application_name>"
+  exit 1
+fi
+
+APPIMAGE_PATH=$1
+APP_NAME=$2
+
+# Set variables for where to copy files
+BINARIES_DIR="$HOME/.local/bin"
+DESKTOP_FILES="$HOME/.local/share/applications"
+ICONS_DIR="/$HOME/.local/share/icons"
+TMPDIR="squashfs-root"
+
+# Ensure the AppImage has execute permissions
+chmod u+x "$APPIMAGE_PATH" || {
+  echo "Error: Failed to set execute permissions." >&2
+  exit 1
+}
+
+# Extract .desktop file and icon from AppImage
+echo "Extracting files..."
+./${APPIMAGE_PATH} --appimage-extract
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to extract files from AppImage."
+  exit 1
+fi
+
+DESKTOP_FILE=$(find "$TMPDIR" -maxdepth 1 -name "*.desktop")
+ICON_FILE=$(find $TMPDIR -maxdepth 1 -regextype posix-extended -regex ".*\.(ico|png|svg)$")
+PARSED_ICON_NAME=$(cat $DESKTOP_FILE | grep -m 1 Icon= | awk -F'=' '{print $2}')
+ICON_FILE_EXTENSION=$(echo $ICON_FILE | awk -F'.' '{print $2}')
+
+if [ ! -f "${DESKTOP_FILE}" ]; then
+  echo "Warning: No .desktop file found in AppImage."
+fi
+
+if [ ! -f "${ICON_FILE}" ]; then
+  echo "Warning: No icon file found in AppImage."
+fi
+
+# Copy the AppImage to /usr/local/bin
+echo "Copying binary..."
+sudo mv "${APPIMAGE_PATH}" "${BINARIES_DIR}/${APP_NAME}" || {
+  echo "Error: Failed to copy binary." >&2
+  exit 1
+}
+
+# Copy .desktop file if found
+if [ -f "${DESKTOP_FILE}" ]; then
+  echo "Copying .desktop file..."
+  sudo cp "${DESKTOP_FILE}" "${DESKTOP_FILES}/${APP_NAME}.desktop" || {
+    echo "Error: Failed to copy desktop file." >&2
+    exit 1
+  }
+fi
+
+# Copy icon if found
+if [ -f "${ICON_FILE}" ]; then
+  echo "Copying icon..."
+  sudo cp "${ICON_FILE}" "${ICONS_DIR}/${PARSED_ICON_NAME}.${ICON_FILE_EXTENSION}" || {
+    echo "Error: Failed to copy icon." >&2
+    exit 1
+  }
+fi
+
+# Update desktop database
+echo "Updating desktop database..."
+sudo update-desktop-database || {
+  echo "Error: Failed to update desktop database." >&2
+  exit 1
+}
+
+rm -rf $TMPDIR
+
+echo " Installation completed successfully."
