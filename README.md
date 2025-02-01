@@ -1,6 +1,7 @@
 # Appimage installer for linux written in bash
 ## Installation
-run ``bash installer.sh``
+1. clone this repo
+2. run ``bash installer.sh``
 ## Usage
 ``appimage-install <path to Appimage file> application name``
 ```
