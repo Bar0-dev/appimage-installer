@@ -1,2 +1,2 @@
 #!/bin/bash
-ln -s appimage-install $HOME/.local/bin/appimage-install
+ln -s $PWD/appimage-install $HOME/.local/bin/appimage-install
